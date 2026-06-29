@@ -12,9 +12,13 @@ __pycache__/
 .uv/
 .python-version
 
-# --- Frontend (separate app with its own git repo + secrets) ---
-agent-starter-react/
-
 # --- Local tooling / OS ---
 .claude/
 .DS_Store
+
+# --- Frontend: keep source, exclude heavy/secret/duplicate paths ---
+agent-starter-react/node_modules/
+agent-starter-react/.next/
+agent-starter-react/.env
+agent-starter-react/.env*.local
+agent-starter-react/agent-starter-react/
