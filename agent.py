@@ -153,18 +153,22 @@ async def detect_intent(question: str, answer: str) -> str:
                     "role": "system",
                     "content": (
                         "You classify an interview candidate's spoken turn. "
-                        "Reply with exactly ONE word:\n"
-                        "- 'end' if they want to stop, quit, or finish the interview now.\n"
-                        "- 'repeat' if they ask to hear the same question again or say they "
-                        "didn't catch it.\n"
-                        "- 'hint' if they ask for a hint, a clue, or help getting started.\n"
-                        "- 'simplify' if they ask you to rephrase, simplify, or explain the "
-                        "question in easier words because they find it unclear.\n"
-                        "- 'off_topic' if the turn is unrelated to the interview question -- "
-                        "personal chit-chat, jokes, flirting, random remarks (e.g. 'I love "
-                        "you', 'haha', 'let's go for a walk').\n"
-                        "- 'answer' for anything that genuinely engages with the question, "
-                        "including a weak attempt or saying they don't know."
+                        "Default to 'answer' -- only pick another label when the turn is "
+                        "CLEARLY and entirely one of these. Reply with exactly ONE word:\n"
+                        "- 'end' if they clearly want to stop, quit, or finish the interview now.\n"
+                        "- 'repeat' if they explicitly ask to hear the same question again or "
+                        "say they didn't catch it.\n"
+                        "- 'hint' if they explicitly ask for a hint, a clue, or help getting started.\n"
+                        "- 'simplify' if they explicitly ask you to rephrase or simplify the "
+                        "question because they find it unclear.\n"
+                        "- 'off_topic' ONLY if the WHOLE turn is clearly social and unrelated to "
+                        "the question -- e.g. flirting, jokes, or chit-chat like 'I love you' or "
+                        "'let's go for a walk'. A long, rambling, partial, uncertain, or "
+                        "thinking-out-loud attempt, a tangent or example that still relates to the "
+                        "topic, or simply 'I don't know' is NOT off_topic.\n"
+                        "- 'answer' for everything else, including weak, incomplete, or "
+                        "still-in-progress attempts to engage with the question.\n"
+                        "When in doubt, choose 'answer'."
                     ),
                 },
                 {
@@ -332,10 +336,12 @@ async def entrypoint(ctx: agents.JobContext):
         #     (0.5 default -> 0.6; push toward 0.7-0.8 in a noisy room).
         #   min_speech_duration: ignore brief blips (keystrokes, clicks, coughs).
         #   min_silence_duration: how long a pause must be before the turn ends.
+        #     Raised to 1.2s so the candidate can pause to think mid-answer without
+        #     being cut off (lower it toward 0.7 if Maya feels too slow to respond).
         vad=silero.VAD.load(
             activation_threshold=0.6,
             min_speech_duration=0.1,
-            min_silence_duration=0.55,
+            min_silence_duration=1.2,
         ),
         # Semantic turn detection (knows when the candidate is done speaking)
         turn_detection=MultilingualModel(),
