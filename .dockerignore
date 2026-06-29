@@ -1,0 +1,10 @@
+.venv/
+.git/
+__pycache__/
+*.pyc
+.env
+.env.example
+secrets.env
+.DS_Store
+agent-starter-react/
+README.md

@@ -1,0 +1,45 @@
+{
+    "interview_id": "james",
+    "questions": [
+        {
+            "question": "What are the assumptions of linear regression?",
+            "score": 0.7
+        },
+        {
+            "question": "What is the difference between classification and regression?",
+            "score": 0.85
+        },
+        {
+            "question": "What is the kernel trick in SVM?",
+            "score": 0.65
+        },
+        {
+            "question": "How do you choose K in K-Means?",
+            "score": 0.6
+        },
+        {
+            "question": "What is the difference between bagging and boosting?",
+            "score": 0.7
+        },
+        {
+            "question": "What is the difference between L1 and L2 regularization?",
+            "score": 0.75
+        },
+        {
+            "question": "What is the difference between precision and recall?",
+            "score": 0.9
+        },
+        {
+            "question": "Why do you need to scale features before using KNN or SVM?",
+            "score": 0.8
+        },
+        {
+            "question": "What are the assumptions of logistic regression?",
+            "score": 0.65
+        },
+        {
+            "question": "What is the purpose of a confusion matrix in model evaluation?",
+            "score": 0.95
+        }
+    ]
+}

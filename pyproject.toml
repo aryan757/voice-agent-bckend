@@ -1,0 +1,10 @@
+[project]
+name = "live-kit-backend"
+version = "0.1.0"
+description = "A simple LiveKit voice agent (Sarvam STT/TTS + OpenAI LLM)"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "livekit-agents[openai,sarvam,silero,turn-detector]~=1.5",
+    "motor>=3.7.1",
+    "python-dotenv>=1.0",
+]

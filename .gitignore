@@ -1,0 +1,20 @@
+# --- Secrets (NEVER commit) ---
+.env
+.env.local
+.env.*.local
+secrets.env
+*.pem
+
+# --- Python ---
+.venv/
+__pycache__/
+*.pyc
+.uv/
+.python-version
+
+# --- Frontend (separate app with its own git repo + secrets) ---
+agent-starter-react/
+
+# --- Local tooling / OS ---
+.claude/
+.DS_Store
