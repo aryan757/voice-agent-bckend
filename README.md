@@ -168,6 +168,74 @@ that room and the interview begins.
 
 ---
 
+## Saving the conversation
+
+At the end of every interview (whether it completes normally or the candidate
+quits early), the full transcript is saved to the `vgi_conversation` MongoDB
+collection:
+
+```json
+{
+  "user_id": "127",
+  "interview_id": "aria",
+  "conversation": [
+    { "type": "main",     "question": "<planned question>", "answer": "<candidate's answer>" },
+    { "type": "followup", "question": "<generated follow-up>", "answer": "<candidate's answer>" }
+  ],
+  "created_at": "<UTC timestamp>"
+}
+```
+
+Only genuine questions and answers are stored (not hints, repeats, or off-topic
+redirects). Saving is fail-safe — a database error is logged but never crashes
+the interview.
+
+---
+
+## Scoring & evaluation
+
+After an interview is saved, `evaluation.py` grades it with an LLM and produces a
+report matching the frontend schema (see `example.json`).
+
+- **`evaluation.py`** — fetches the latest `vgi_conversation` for a `user_id`,
+  asks the LLM to score it (easy-to-medium, intent-based judging), and assembles
+  the report. It computes `overall`, `dimensions`, `questionReviews`,
+  `sessionType`, and `completedAt`; all other keys are frontend-managed
+  placeholders.
+- **`api.py`** — a small FastAPI server exposing the report over HTTP.
+
+Scoring model:
+
+| Part | Scale | Notes |
+|------|-------|-------|
+| `dimensions` | `technical` 0–40, `depth` 0–25, `communication` 0–20, `problemSolving` 0–15 | LLM gives a percent per dimension; points are derived |
+| `overall.score` | 0–100 | sum of the four dimension points |
+| `questionReviews[].score` | 0–40 | per-question, with `good` / `improve` feedback |
+
+### Run the evaluation
+
+CLI (prints the JSON report):
+
+```bash
+uv run python evaluation.py <user_id>     # e.g. 127
+```
+
+HTTP API:
+
+```bash
+uv run uvicorn api:app --reload --port 8001
+```
+
+| Method | Path | Returns |
+|--------|------|---------|
+| GET | `/health` | `{"status":"ok"}` |
+| GET | `/evaluation/{user_id}` | the scored report for that user's latest interview |
+| GET | `/docs` | interactive Swagger UI |
+
+> Each call runs a live LLM evaluation (~3–6s) and is not cached.
+
+---
+
 ## Architecture note (where to run the agent)
 
 The **agent worker** (this code) and the **LiveKit server** are two separate
@@ -192,8 +260,11 @@ is geographically distant from the media server.
 
 | File | Purpose |
 |------|---------|
-| `agent.py` | The interview agent (all logic). |
+| `agent.py` | The interview agent (all logic + conversation saving). |
+| `evaluation.py` | Scores a saved conversation with an LLM (produces the report). |
+| `api.py` | FastAPI server exposing the evaluation report over HTTP. |
 | `questions.json` | Fallback question set if MongoDB is unreachable. |
+| `example.json` | Target schema for the evaluation report (from the frontend). |
 | `pyproject.toml` / `uv.lock` | Dependencies. |
 | `Dockerfile` | Container image for deploying the worker. |
 | `.env` | Secrets / config (not committed). |

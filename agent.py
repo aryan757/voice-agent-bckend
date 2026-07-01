@@ -26,6 +26,7 @@ import asyncio
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -49,6 +50,8 @@ QUESTIONS_FILE = Path(__file__).parent / "questions.json"
 # the start of every session, so new question sets are picked up with no redeploy.
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 QUESTIONS_COLLECTION = "voice_agent_planner"
+# Where the completed interview conversation (questions + answers) is saved.
+CONVERSATION_COLLECTION = "vgi_conversation"
 
 # Only questions the planner scored at or above this value earn a follow-up.
 FOLLOW_UP_THRESHOLD = 0.85
@@ -66,8 +69,8 @@ def read_local_questions() -> list[dict]:
     return json.loads(QUESTIONS_FILE.read_text())["questions"]
 
 
-async def fetch_latest_questions() -> list[dict]:
-    """Fetch the most recently created question set from MongoDB."""
+async def fetch_latest_interview() -> dict:
+    """Fetch the most recently created interview document from MongoDB."""
     client = AsyncIOMotorClient(DATABASE_URL, serverSelectionTimeoutMS=8000)
     try:
         collection = client.get_default_database()[QUESTIONS_COLLECTION]
@@ -76,19 +79,50 @@ async def fetch_latest_questions() -> list[dict]:
         client.close()
     if not doc:
         raise RuntimeError(f"no documents in '{QUESTIONS_COLLECTION}'")
-    return doc["questions"]
+    return doc
 
 
-async def load_questions() -> list[dict]:
-    """Resolve this session's questions: latest from MongoDB, else local file."""
+async def load_interview() -> tuple[list[dict], str | None, str | None]:
+    """Resolve this session's questions plus the candidate's identifiers.
+
+    Returns (questions, user_id, interview_id). user_id/interview_id are None when
+    falling back to the local questions.json."""
     if DATABASE_URL:
         try:
-            questions = await fetch_latest_questions()
-            logger.info("loaded %d questions from MongoDB", len(questions))
-            return questions
+            doc = await fetch_latest_interview()
+            questions = doc["questions"]
+            user_id = doc.get("user_id")
+            interview_id = doc.get("interview_id")
+            logger.info(
+                "loaded %d questions from MongoDB (user_id=%s, interview_id=%s)",
+                len(questions), user_id, interview_id,
+            )
+            return questions, user_id, interview_id
         except Exception as exc:
             logger.warning("MongoDB fetch failed (%s); falling back to questions.json", exc)
-    return read_local_questions()
+    return read_local_questions(), None, None
+
+
+async def save_conversation(
+    user_id: str | None, interview_id: str | None, conversation: list[dict]
+) -> None:
+    """Save the interview's question/answer conversation to MongoDB."""
+    if not DATABASE_URL or not conversation:
+        return
+    doc = {
+        "user_id": user_id,
+        "interview_id": interview_id,
+        "conversation": conversation,
+        "created_at": datetime.now(timezone.utc),
+    }
+    client = AsyncIOMotorClient(DATABASE_URL, serverSelectionTimeoutMS=8000)
+    try:
+        await client.get_default_database()[CONVERSATION_COLLECTION].insert_one(doc)
+        logger.info("saved conversation for user_id=%s (%d turns)", user_id, len(conversation))
+    except Exception as exc:
+        logger.warning("failed to save conversation (%s)", exc)
+    finally:
+        client.close()
 
 
 class InterviewAgent(Agent):
@@ -189,6 +223,17 @@ async def speak(speech) -> None:
     await speech.wait_for_playout()
 
 
+def speech_text(handle) -> str:
+    """Extract the text Maya actually spoke from a SpeechHandle (e.g. an
+    LLM-generated follow-up question), so it can be saved in the transcript."""
+    parts = [
+        item.text_content
+        for item in handle.chat_items
+        if getattr(item, "role", None) == "assistant" and item.text_content
+    ]
+    return " ".join(parts).strip()
+
+
 async def get_answer(session: AgentSession, agent: InterviewAgent, question: str, reask) -> str:
     """Wait for a genuine answer to ``question``, handling these candidate intents:
       - 'end'       -> raise EndInterview (caller closes out)
@@ -247,11 +292,15 @@ async def end_interview(
 
 async def run_interview(
     session: AgentSession, agent: InterviewAgent, ctx: agents.JobContext,
-    questions: list[dict],
+    questions: list[dict], user_id: str | None, interview_id: str | None,
 ) -> None:
     """Drive the interview: greet, ask each question in order (with at most one
-    score-gated follow-up), then quit. The candidate can ask for a hint, to have a
-    question repeated or simplified, or to end the interview early at any point."""
+    score-gated follow-up), record every question/answer pair, then quit. The
+    candidate can ask for a hint, to have a question repeated or simplified, or to
+    end the interview early at any point."""
+
+    # Accumulated question/answer pairs, saved to MongoDB when the interview ends.
+    conversation: list[dict] = []
 
     # 1. Greeting + explain the format.
     await speak(session.generate_reply(
@@ -287,10 +336,13 @@ async def run_interview(
                 session, agent, question,
                 reask=lambda q=question: speak(session.say(q)),
             )
+            conversation.append(
+                {"type": "main", "question": question, "answer": last_answer}
+            )
 
             # 3. One follow-up, only for high-scoring questions.
             if score >= FOLLOW_UP_THRESHOLD:
-                await speak(session.generate_reply(
+                followup = session.generate_reply(
                     instructions=(
                         f'The candidate was asked: "{question}"\n'
                         f'They answered: "{last_answer}"\n\n'
@@ -299,21 +351,28 @@ async def run_interview(
                         "deeper. Ask only that single question -- do not answer it, do not "
                         "stack multiple questions, and do not give feedback."
                     )
-                ))
+                )
+                await speak(followup)
+                followup_question = speech_text(followup)
                 last_answer = await get_answer(
                     session, agent, question,
                     reask=lambda: speak(session.say(
                         "Could you share your answer to that follow-up?"
                     )),
                 )
+                conversation.append(
+                    {"type": "followup", "question": followup_question, "answer": last_answer}
+                )
 
-        # 4a. All questions done -> quit.
+        # 4a. All questions done -> save + quit.
+        await save_conversation(user_id, interview_id, conversation)
         await end_interview(session, ctx, instructions=(
             "Warmly thank the candidate for their time, let them know the interview is "
             "complete, and wish them well. Keep it to one or two sentences."
         ))
     except EndInterview:
-        # 4b. Candidate chose to stop early -> quit gracefully.
+        # 4b. Candidate chose to stop early -> save what we have + quit gracefully.
+        await save_conversation(user_id, interview_id, conversation)
         await end_interview(session, ctx, instructions=(
             "The candidate has asked to end the interview early. Warmly acknowledge "
             "that, thank them for their time, and wish them well. Keep it to one or "
@@ -362,10 +421,10 @@ async def entrypoint(ctx: agents.JobContext):
     # candidate had to start the conversation).
     await ctx.wait_for_participant()
 
-    # Fetch the latest question set from the planner's MongoDB collection.
-    questions = await load_questions()
+    # Fetch the latest question set (and the candidate's identifiers) from MongoDB.
+    questions, user_id, interview_id = await load_interview()
 
-    await run_interview(session, agent, ctx, questions)
+    await run_interview(session, agent, ctx, questions, user_id, interview_id)
 
 
 if __name__ == "__main__":

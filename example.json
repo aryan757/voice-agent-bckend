@@ -1,0 +1,58 @@
+{
+"userId": "64b8f1e2a1c4d5e6f7g8h9i0",
+"success": true,
+"message": "Evaluation loaded",
+"data": {
+"interviewId": "6a441c4eaaedb8f83d696f29",
+"topic": "LLM Systems",
+"interviewType": "standard-technical",
+"interviewTypeLabel": "Standard Technical",
+"intensity": "Senior",
+"interviewer": "Aria",
+"sessionType": "Voice Interview",
+"completedAt": "2026-06-22T10:15:00.000Z",
+"completedAtLabel": "June 22, 2026",
+"overall": {
+"score": 82,
+"maxScore": 100,
+"band": "Strong",
+"bandLabel": "Strong Candidate",
+"scoreColor": "#10B981",
+"percentile": 79,
+"percentileText": "Above 79th percentile · Top 15 nationally",
+"nationalRankLabel": "Top 15 nationally"
+},
+"certification": {
+"earned": true,
+"certificateId": "VGI-LLM-2026-0042",
+"downloadUrl": "/api/skill-certificates/.../download"
+},
+"dimensions": {
+"technical": { "points": 35, "maxPoints": 40, "percent": 88 },
+"depth": { "points": 20, "maxPoints": 25, "percent": 80 },
+"communication": { "points": 17, "maxPoints": 20, "percent": 85 },
+"problemSolving": { "points": 10, "maxPoints": 15, "percent": 67 }
+},
+"delivery": {
+"paceWpm": 142, "paceLabel": "Optimal",
+"fillerCount": 3, "fillerLabel": "Excellent",
+"confidenceScore": 0.82, "confidenceLabel": "Strong"
+},
+"questionReviews": [
+{
+"questionId": "q1",
+"question": "Explain the trade-off: dense vs sparse retrieval.",
+"score": 36, "maxScore": 40, "percent": 90,
+"feedback": {
+"good": "Cited concrete latency numbers.",
+"improve": "Mention hybrid fusion (RRF)."
+}
+}
+],
+"nextSteps": [
+"Study distillation techniques to lift your Edge AI score.",
+"Try a System Design voice round."
+],
+"rewards": { "xpEarned": 58, "creditsEarned": 0, "streakDays": 4 }
+}
+}
