@@ -1,6 +1,6 @@
 # LiveKit Voice Interview Agent
 
-A real-time voice agent — **"Maya"** — that conducts a spoken technical interview.
+A real-time voice agent — **"Aria"** — that conducts a spoken technical interview.
 She greets the candidate, asks a planned set of questions one at a time, judges
 each answer, and reacts naturally (hints, rephrasing, follow-ups) before quitting
 when the interview is done.
@@ -14,12 +14,12 @@ agent.
 ## How it works (the logic)
 
 ```
-Candidate's voice ──► STT (Sarvam) ──► Agent logic ──► LLM (OpenAI) ──► TTS (Sarvam) ──► Candidate hears Maya
+Candidate's voice ──► STT (Sarvam) ──► Agent logic ──► LLM (OpenAI) ──► TTS (Sarvam) ──► Candidate hears Aria
                                             │
                                             └── questions from MongoDB (latest set)
 ```
 
-1. **Greeting** — Maya waits for the candidate to join, then greets them and
+1. **Greeting** — Aria waits for the candidate to join, then greets them and
    explains the format (she always speaks first).
 2. **Questions** — She fetches the **latest** question set from MongoDB and asks
    each question **in order**, exactly as written.
@@ -27,15 +27,15 @@ Candidate's voice ──► STT (Sarvam) ──► Agent logic ──► LLM (Op
    ≥ 0.85**, the LLM silently judges the answer and asks **one** follow-up
    question. Lower-scored questions move straight on. (Threshold:
    `FOLLOW_UP_THRESHOLD` in `agent.py`.)
-4. **Quit** — When all questions are done — or the candidate asks to stop — Maya
+4. **Quit** — When all questions are done — or the candidate asks to stop — Aria
    gives a short closing and disconnects.
 
-### What Maya understands (intent handling)
+### What Aria understands (intent handling)
 
-After every answer, a small LLM call classifies the candidate's turn and Maya
+After every answer, a small LLM call classifies the candidate's turn and Aria
 reacts accordingly:
 
-| Candidate says… | Maya does |
+| Candidate says… | Aria does |
 |---|---|
 | a real answer (even "I don't know") | judges it, continues |
 | "give me a hint" / "I'm stuck" | gives ONE hint without revealing the answer, re-asks |
@@ -149,7 +149,7 @@ test the interview flow:
 ```bash
 uv run python agent.py console
 ```
-Press `Ctrl+C` to stop. Once Maya greets you, just start talking.
+Press `Ctrl+C` to stop. Once Aria greets you, just start talking.
 Try: *"can you give me a hint?"*, *"rephrase that more simply"*, *"let's finish here"*.
 
 ### Run against a LiveKit room (real deployment path)
@@ -163,7 +163,7 @@ uv run python agent.py dev        # development
 ```
 
 The worker connects to the LiveKit server and waits. When a candidate joins a
-room (via a frontend or the LiveKit Agents Playground), Maya is dispatched into
+room (via a frontend or the LiveKit Agents Playground), Aria is dispatched into
 that room and the interview begins.
 
 ---

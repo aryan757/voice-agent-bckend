@@ -150,7 +150,7 @@ FRONTEND_PLACEHOLDERS = {
     "interviewType": "",
     "interviewTypeLabel": "",
     "intensity": "",
-    "interviewer": "Maya",
+    "interviewer": "Aria",
     "overall_extra": {
         "band": "",
         "bandLabel": "",

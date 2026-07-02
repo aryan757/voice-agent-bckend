@@ -1,6 +1,6 @@
 """A LiveKit voice interview agent.
 
-Maya, the interviewer, greets the candidate and then walks through a set of
+Aria, the interviewer, greets the candidate and then walks through a set of
 questions produced by the interview-planner service (the latest document in the
 MongoDB ``voice_agent_planner`` collection; falls back to the bundled
 ``questions.json`` if the database is unreachable). After each answer she asks at
@@ -57,7 +57,7 @@ CONVERSATION_COLLECTION = "vgi_conversation"
 FOLLOW_UP_THRESHOLD = 0.85
 
 INTERVIEWER_PERSONA = (
-    "You are Maya, a warm and professional technical interviewer on a live voice call. "
+    "You are Aria, a warm and professional technical interviewer on a live voice call. "
     "You speak naturally and concisely, the way a real person would. Keep every reply "
     "short -- one or two sentences. Never lecture, never answer your own questions, and "
     "never read out scores or any internal notes."
@@ -130,7 +130,7 @@ class InterviewAgent(Agent):
 
     Every completed candidate turn is captured and handed to the driver via a
     queue, and the agent's automatic reply is suppressed -- so the driver has
-    full control over what Maya says and when.
+    full control over what Aria says and when.
     """
 
     def __init__(self) -> None:
@@ -141,7 +141,7 @@ class InterviewAgent(Agent):
         self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage
     ) -> None:
         # Hand the candidate's answer to the driver, then suppress the default
-        # LLM reply -- the driver decides the next thing Maya says.
+        # LLM reply -- the driver decides the next thing Aria says.
         await self._answers.put(new_message.text_content or "")
         raise StopResponse()
 
@@ -150,7 +150,7 @@ class InterviewAgent(Agent):
         return await self._answers.get()
 
     def drain(self) -> None:
-        """Discard any utterances captured so far (e.g. things said while Maya was
+        """Discard any utterances captured so far (e.g. things said while Aria was
         still speaking, or a reply to the greeting) so they aren't mistaken for the
         answer to the next question."""
         while not self._answers.empty():
@@ -224,7 +224,7 @@ async def speak(speech) -> None:
 
 
 def speech_text(handle) -> str:
-    """Extract the text Maya actually spoke from a SpeechHandle (e.g. an
+    """Extract the text Aria actually spoke from a SpeechHandle (e.g. an
     LLM-generated follow-up question), so it can be saved in the transcript."""
     parts = [
         item.text_content
@@ -246,7 +246,7 @@ async def get_answer(session: AgentSession, agent: InterviewAgent, question: str
     ``reask`` is a no-arg coroutine factory that re-speaks the relevant question.
     """
     while True:
-        agent.drain()  # discard stray utterances said while Maya was speaking
+        agent.drain()  # discard stray utterances said while Aria was speaking
         answer = await agent.next_answer()
         intent = await detect_intent(question, answer)
 
@@ -305,7 +305,7 @@ async def run_interview(
     # 1. Greeting + explain the format.
     await speak(session.generate_reply(
         instructions=(
-            "Introduce yourself as Maya and warmly greet the candidate. In one or two "
+            "Introduce yourself as Aria and warmly greet the candidate. In one or two "
             "short sentences, explain this is a short technical interview where you'll "
             "ask a series of questions they should answer out loud, then say you'll "
             "begin with the first question."
@@ -396,7 +396,7 @@ async def entrypoint(ctx: agents.JobContext):
         #   min_speech_duration: ignore brief blips (keystrokes, clicks, coughs).
         #   min_silence_duration: how long a pause must be before the turn ends.
         #     Raised to 1.2s so the candidate can pause to think mid-answer without
-        #     being cut off (lower it toward 0.7 if Maya feels too slow to respond).
+        #     being cut off (lower it toward 0.7 if Aria feels too slow to respond).
         vad=silero.VAD.load(
             activation_threshold=0.6,
             min_speech_duration=0.1,
@@ -416,7 +416,7 @@ async def entrypoint(ctx: agents.JobContext):
 
     await ctx.connect()
 
-    # Wait for the candidate to actually join before Maya greets them, so the
+    # Wait for the candidate to actually join before Aria greets them, so the
     # greeting isn't spoken to an empty room (which made it seem like the
     # candidate had to start the conversation).
     await ctx.wait_for_participant()
