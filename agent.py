@@ -305,10 +305,10 @@ async def run_interview(
     # 1. Greeting + explain the format.
     await speak(session.generate_reply(
         instructions=(
-            "Introduce yourself as Aria and warmly greet the candidate. In one or two "
-            "short sentences, explain this is a short technical interview where you'll "
-            "ask a series of questions they should answer out loud, then say you'll "
-            "begin with the first question."
+            "Start by clearly saying 'Hi, I am Aria' (say 'I am' in full, not 'I'm'), "
+            "then warmly greet the candidate. In one or two short sentences, explain "
+            "this is a short technical interview where you'll ask a series of questions "
+            "they should answer out loud, then say you'll begin with the first question."
         )
     ))
 
